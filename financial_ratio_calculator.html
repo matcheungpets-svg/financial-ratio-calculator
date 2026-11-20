@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Financial Ratio Calculator</title>
+<style>
+  :root { color-scheme: light; --ink:#172033; --muted:#64748b; --line:#e2e8f0; --blue:#2563eb; --teal:#0f766e; --bg:#f5f7fb; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  .wrap { max-width:1050px; margin:36px auto; padding:0 18px 40px; }
+  header { margin-bottom:22px; }
+  h1 { font-size:clamp(26px,4vw,36px); letter-spacing:-.03em; margin:0 0 6px; }
+  .sub { color:var(--muted); margin:0; }
+  .layout { display:grid; grid-template-columns:minmax(280px, .9fr) minmax(340px,1.1fr); gap:18px; align-items:start; }
+  .panel { background:white; border:1px solid var(--line); border-radius:16px; padding:22px; box-shadow:0 8px 24px rgba(15,23,42,.04); }
+  h2 { font-size:18px; margin:0 0 16px; }
+  .field { margin:0 0 17px; }
+  label { display:block; font-weight:650; margin-bottom:7px; }
+  select { width:100%; padding:12px 13px; border:1px solid #cbd5e1; border-radius:10px; background:white; color:var(--ink); font:inherit; }
+  select:focus { outline:3px solid #bfdbfe; border-color:var(--blue); }
+  .hint { color:var(--muted); font-size:12px; margin-top:5px; }
+  .metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+  .metric { border:1px solid var(--line); border-radius:12px; padding:14px 12px; min-width:0; }
+  .metric .name { color:var(--muted); font-size:12px; font-weight:650; min-height:36px; }
+  .metric .value { font-size:clamp(20px,3vw,27px); font-weight:750; letter-spacing:-.03em; margin-top:4px; overflow-wrap:anywhere; }
+  .metric .unit { color:var(--muted); font-size:11px; }
+  .chartbox { margin-top:20px; }
+  .chart-head { display:flex; justify-content:space-between; gap:12px; align-items:baseline; margin-bottom:8px; }
+  .chart-head h2 { margin:0; }
+  canvas { width:100%; height:270px; display:block; }
+  .note { margin:18px 0 0; padding:12px 14px; background:#f8fafc; border-radius:10px; color:#475569; font-size:13px; }
+  .formula { margin-top:16px; border-top:1px solid var(--line); padding-top:14px; color:var(--muted); font-size:12px; }
+  .formula div { margin:5px 0; }
+  .negative { color:#b91c1c; }
+  footer { color:var(--muted); font-size:12px; text-align:center; margin-top:20px; }
+  @media(max-width:760px) { .layout { grid-template-columns:1fr; } .metrics { grid-template-columns:1fr; } .metric .name { min-height:0; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <h1>Financial Ratio Calculator</h1>
+    <p class="sub">Adjust the balances and revenue to calculate liquidity and working-capital efficiency ratios.</p>
+  </header>
+  <div class="layout">
+    <section class="panel" aria-labelledby="inputs-title">
+      <h2 id="inputs-title">Choose your financial inputs</h2>
+      <div class="field">
+        <label for="assets">Current assets</label>
+        <select id="assets">
+          <option value="25000">$25,000</option><option value="50000" selected>$50,000</option>
+          <option value="75000">$75,000</option><option value="100000">$100,000</option>
+          <option value="150000">$150,000</option><option value="250000">$250,000</option>
+          <option value="500000">$500,000</option><option value="1000000">$1,000,000</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="liabilities">Current liabilities</label>
+        <select id="liabilities">
+          <option value="10000">$10,000</option><option value="25000">$25,000</option>
+          <option value="40000" selected>$40,000</option><option value="50000">$50,000</option>
+          <option value="75000">$75,000</option><option value="100000">$100,000</option>
+          <option value="150000">$150,000</option><option value="250000">$250,000</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="inventory">Inventory</label>
+        <select id="inventory">
+          <option value="0">$0</option><option value="5000">$5,000</option>
+          <option value="10000" selected>$10,000</option><option value="15000">$15,000</option>
+          <option value="25000">$25,000</option><option value="40000">$40,000</option>
+          <option value="50000">$50,000</option><option value="75000">$75,000</option>
+        </select>
+        <div class="hint">Inventory is subtracted from current assets for the quick ratio.</div>
+      </div>
+      <div class="field">
+        <label for="revenue">Annual revenue</label>
+        <select id="revenue">
+          <option value="50000">$50,000</option><option value="100000">$100,000</option>
+          <option value="250000" selected>$250,000</option><option value="500000">$500,000</option>
+          <option value="750000">$750,000</option><option value="1000000">$1,000,000</option>
+          <option value="2500000">$2,500,000</option><option value="5000000">$5,000,000</option>
+        </select>
+      </div>
+      <p class="note" id="validation" aria-live="polite">All values are illustrative. Choose an option above to update the results and chart instantly.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="results-title">
+      <h2 id="results-title">Calculated ratios</h2>
+      <div class="metrics">
+        <div class="metric"><div class="name">Current ratio</div><div class="value" id="currentRatio">1.25×</div><div class="unit">times</div></div>
+        <div class="metric"><div class="name">Quick ratio</div><div class="value" id="quickRatio">1.00×</div><div class="unit">times</div></div>
+        <div class="metric"><div class="name">Working capital turnover</div><div class="value" id="turnover">25.00×</div><div class="unit">times per year</div></div>
+      </div>
+      <div class="chartbox">
+        <div class="chart-head"><h2>Ratio comparison</h2><span class="hint">Live chart</span></div>
+        <canvas id="ratioChart" role="img" aria-label="Bar chart comparing current ratio, quick ratio, and working capital turnover"></canvas>
+      </div>
+      <div class="formula">
+        <strong>How the ratios are calculated</strong>
+        <div>Current ratio = Current assets ÷ Current liabilities</div>
+        <div>Quick ratio = (Current assets − Inventory) ÷ Current liabilities</div>
+        <div>Working capital turnover = Annual revenue ÷ Working capital</div>
+        <div>Working capital = Current assets − Current liabilities</div>
+      </div>
+      <p class="note" id="workingCapital">Working capital: $10,000</p>
+    </section>
+  </div>
+  <footer>Educational calculator only. Working capital turnover uses the selected ending working-capital balance as a proxy; a more precise analysis may use average working capital.</footer>
+</main>
+<script>
+(() => {
+  const ids = ['assets','liabilities','inventory','revenue'];
+  const $ = id => document.getElementById(id);
+  const money = n => new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(n);
+  const fmt = n => Number.isFinite(n) ? n.toFixed(2) + '×' : 'N/A';
+  const canvas = $('ratioChart'), ctx = canvas.getContext('2d');
+
+  function drawChart(values) {
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    canvas.width = Math.round(w*dpr); canvas.height = Math.round(h*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,w,h);
+    const labels = ['Current ratio','Quick ratio','WC turnover'];
+    const left = 42, right = 14, top = 20, bottom = 48;
+    const plotW = w-left-right, plotH = h-top-bottom;
+    const finiteValues = values.filter(Number.isFinite);
+    const maxVal = Math.max(1, ...finiteValues);
+    const ceiling = maxVal * 1.18;
+    ctx.font = '11px system-ui'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    for (let i=0;i<=4;i++) {
+      const val = ceiling*i/4, y = top+plotH-(val/ceiling)*plotH;
+      ctx.strokeStyle = '#e9eef5'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(left,y); ctx.lineTo(w-right,y); ctx.stroke();
+      ctx.fillStyle = '#64748b'; ctx.fillText(val.toFixed(1), left-8, y);
+    }
+    const colors = ['#2563eb','#0f766e','#8b5cf6'];
+    const slot = plotW/3, barW = Math.min(52,slot*.52);
+    values.forEach((v,i) => {
+      const x = left+slot*i+(slot-barW)/2;
+      if (Number.isFinite(v)) {
+        const bh = (Math.abs(v)/ceiling)*plotH, y= v >= 0 ? top+plotH-bh : top+plotH;
+        ctx.fillStyle=colors[i]; ctx.beginPath();
+        const r=6; ctx.roundRect(x,y,barW,Math.max(0,bh),[r,r,0,0]); ctx.fill();
+        ctx.fillStyle='#172033'; ctx.font='600 11px system-ui'; ctx.textAlign='center'; ctx.textBaseline='bottom';
+        ctx.fillText(v.toFixed(2)+'×',x+barW/2,Math.max(top+12,y-5));
+      } else {
+        ctx.fillStyle='#b91c1c'; ctx.font='11px system-ui'; ctx.textAlign='center'; ctx.fillText('N/A',x+barW/2,top+plotH-8);
+      }
+      ctx.fillStyle='#475569'; ctx.font='11px system-ui'; ctx.textAlign='center'; ctx.textBaseline='top';
+      ctx.fillText(labels[i],left+slot*i+slot/2,top+plotH+12);
+    });
+  }
+
+  function update() {
+    const [assets, liabilities, inventory, revenue] = ids.map(id => Number($(id).value));
+    const wc = assets-liabilities;
+    const current = liabilities === 0 ? NaN : assets/liabilities;
+    const quick = liabilities === 0 ? NaN : (assets-inventory)/liabilities;
+    const turnover = wc === 0 ? NaN : revenue/wc;
+    $('currentRatio').textContent=fmt(current);
+    $('quickRatio').textContent=fmt(quick);
+    $('turnover').textContent=fmt(turnover);
+    $('workingCapital').innerHTML='Working capital: <strong class="'+(wc<0?'negative':'')+'">'+money(wc)+'</strong>';
+    const warning = [];
+    if (inventory > assets) warning.push('Inventory exceeds current assets, so the quick ratio is negative.');
+    if (wc <= 0) warning.push(wc===0 ? 'Working capital is zero, so working capital turnover is undefined.' : 'Working capital is negative; turnover is shown as a negative value.');
+    else warning.push('Values are illustrative. Ratios update automatically when you change a selection.');
+    $('validation').textContent=warning.join(' ');
+    drawChart([current,quick,turnover]);
+  }
+  ids.forEach(id => $(id).addEventListener('change',update));
+  window.addEventListener('resize',update);
+  update();
+})();
+</script>
+</body>
+</html>
